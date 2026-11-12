@@ -1,7 +1,7 @@
-import type { ConductivityUnit, ExperimentSession } from '../domain/types';
+import type { ExperimentSession, TdsUnit } from '../domain/types';
 
-const SESSIONS_KEY = 'scalar-lab-sessions-v1';
-const UNIT_KEY = 'scalar-lab-unit';
+const SESSIONS_KEY = 'scalar-lab-tds-sessions-v1';
+const UNIT_KEY = 'scalar-lab-tds-unit';
 
 /** Browser-local persistence boundary. Replace this adapter if storage needs change later. */
 export const sessionRepository = {
@@ -10,6 +10,6 @@ export const sessionRepository = {
     catch { return []; }
   },
   saveAll(sessions: ExperimentSession[]): void { localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions)); },
-  readUnit(): ConductivityUnit { return localStorage.getItem(UNIT_KEY) === 'µS/cm' ? 'µS/cm' : 'mS/cm'; },
-  saveUnit(unit: ConductivityUnit): void { localStorage.setItem(UNIT_KEY, unit); },
+  readUnit(): TdsUnit { return localStorage.getItem(UNIT_KEY) === 'mg/L' ? 'mg/L' : 'ppm'; },
+  saveUnit(unit: TdsUnit): void { localStorage.setItem(UNIT_KEY, unit); },
 };

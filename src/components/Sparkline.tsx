@@ -1,12 +1,12 @@
-import type { ConductivityUnit, Reading } from '../domain/types';
-import { displayConductivity } from '../services/measurements';
+import type { Reading, TdsUnit } from '../domain/types';
+import { displayTds } from '../services/measurements';
 
-interface Props { readings: Reading[]; unit: ConductivityUnit; }
+interface Props { readings: Reading[]; unit: TdsUnit; }
 
 export default function Sparkline({ readings, unit }: Props) {
   const points = readings.slice(-80);
   if (!points.length) return null;
-  const values = points.map((point) => displayConductivity(point.conductivity, unit));
+  const values = points.map((point) => displayTds(point.tdsPpm, unit));
   const min = Math.min(...values), max = Math.max(...values);
   const padding = Math.max((max - min) * 0.16, Math.abs(max) * 0.04, 0.05);
   const low = min - padding, high = max + padding;
@@ -21,7 +21,7 @@ export default function Sparkline({ readings, unit }: Props) {
       <div className="chart-y-labels">{labels.map((label, index) => <span key={index}>{label}</span>)}</div>
       <div className="chart-plot">
         <div className="chart-grid"><i /><i /><i /><i /></div>
-        <svg className="chart-svg" viewBox="0 0 800 230" preserveAspectRatio="none" role="img" aria-label="Conductivity readings chart">
+        <svg className="chart-svg" viewBox="0 0 800 230" preserveAspectRatio="none" role="img" aria-label="TDS readings chart">
           <defs><linearGradient id="chart-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#54ac8d" stopOpacity=".21" /><stop offset="1" stopColor="#54ac8d" stopOpacity="0" /></linearGradient></defs>
           <path className="chart-area-path" d={`${path} L${last.x.toFixed(1)},230 L${coords[0].x.toFixed(1)},230 Z`} />
           <path className="chart-line" d={path} />
