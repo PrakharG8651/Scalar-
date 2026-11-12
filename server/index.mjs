@@ -21,7 +21,10 @@ const server = createServer(async (request, response) => {
     }
     let pathname = decodeURIComponent(new URL(request.url || '/', 'http://scalar.local').pathname);
     let file = path.resolve(root, `.${pathname}`);
-    if (!file.startsWith(`${root}${path.sep}`) && file !== path.join(root, 'index.html')) {
+    // The root URL resolves to the dist directory itself. Allow that exact
+    // directory so it can fall through to index.html below, while still
+    // rejecting paths that escape the built asset directory.
+    if (file !== root && !file.startsWith(`${root}${path.sep}`)) {
       response.writeHead(403).end('Forbidden');
       return;
     }

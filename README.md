@@ -32,6 +32,16 @@ flowchart LR
 
 ## Run the app
 
+### Windows: install once, then use the desktop icon
+
+For lab users, no terminal commands are needed for normal use:
+
+1. Double-click [`Install Scalar.bat`](<Install Scalar.bat>) once. It checks for Node.js 20 or later, installs Node.js LTS with Windows Package Manager if needed, installs the app packages, builds Scalar, and creates **Scalar Lab** and **Stop Scalar Lab** desktop icons. The first setup needs internet access. If Windows Package Manager is unavailable, the installer opens the official Node.js download page and explains what to do next.
+2. Double-click **Scalar Lab** whenever you want to use the dashboard. It starts the local server in the background, opens the site in your default browser, and displays the host computer's LAN addresses for the other lab devices.
+3. Keep the host computer running while other devices view the live feed. When finished, double-click **Stop Scalar Lab**.
+
+If Windows Firewall asks whether Node.js can accept connections, allow it on the **Private network** used by the lab. Do not allow public-network access for this lab setup.
+
 ### Development on a local network
 
 Install dependencies once:
@@ -56,6 +66,14 @@ npm start
 ```
 
 The Node server serves the generated `dist` directory and the LAN API on port 4174 by default. Set the `PORT` environment variable to change the port. For access outside a trusted lab network, deploy behind HTTPS. Web Serial requires a secure context and is currently supported mainly in desktop Chromium browsers such as Chrome and Edge. The Arduino must be plugged into the device that selects **Connect Arduino**; other network devices can view the stream without a serial port.
+
+The production server serves `index.html` for the root URL (`/`) and for client-side dashboard routes, while keeping requests inside the built `dist` directory. The Windows desktop launcher checks ports 4174 through 4194 and uses the first available one, so another app already using 4174 will not stop Scalar from launching. It confirms startup from the server's listening message, then opens the dashboard. Startup output and errors are kept in the `logs` folder.
+
+### Troubleshooting the Windows launcher
+
+- **The browser shows `Forbidden`:** stop Scalar Lab and launch it again so the server reloads the current files. The server should serve the dashboard at the root URL, such as `http://localhost:4174/` (the port may differ).
+- **The launcher says the server could not start:** check `logs/scalar-server-error.log` and `logs/scalar-server.log` in the project folder. The first contains startup errors; the second confirms which port Node is listening on.
+- **Other devices cannot connect:** use the LAN address shown by the launcher, keep the host computer on, and allow Node.js on the lab's Windows **Private** network if Windows Firewall prompts. Both devices must be on a network that permits device-to-device traffic.
 
 ## Arduino serial format
 
@@ -89,6 +107,10 @@ The browser records its own local receive time as well as Arduino uptime. This l
 - Network viewers can see the complete in-memory live experiment history but cannot save it into the source browser's local log. Use an exported file to transfer a saved session.
 - There is no login or network access control. Anyone who can reach the app on the LAN can view the live feed. Use it on a trusted lab network.
 
+### Public hosting note
+
+If the app is deployed publicly, automated scans and requests are normal internet background traffic; that does not mean the project has been personally targeted. Vercel provides platform-level DDoS mitigation and configurable WAF/rate limiting, but those do not make an unauthenticated app private. The current relay accepts readings from any client that can reach it and has no login, so do not publish real lab readings on a public deployment until access control and request limits are in place. [Vercel DDoS mitigation](https://vercel.com/docs/vercel-firewall/ddos-mitigation) · [Deployment Protection](https://vercel.com/docs/deployment-protection) · [WAF rate limiting](https://vercel.com/docs/vercel-firewall/vercel-waf/rate-limiting).
+
 ## Project structure
 
 ```text
@@ -105,7 +127,10 @@ server/
   index.mjs                     Production static/API server
 arduino/
   scalar_serial_test.ino        Synthetic serial protocol test sketch
+Install Scalar.bat              One-time Windows setup
+Launch Scalar.bat               Start server and open dashboard
+Stop Scalar.bat                 Stop the background server
 ```
 
-The standalone LaTeX source is [`docs/scalar_documentation.tex`](docs/scalar_documentation.tex). Compile it from the `docs` folder with `pdflatex scalar_documentation.tex`; run the command twice to populate the table of contents and cross-references.
+The project documentation is available as a PDF at [`docs/documentation.pdf`](docs/documentation.pdf). Open that file to read about the implemented features, setup, data flow, Arduino serial format, and current limitations.
 
