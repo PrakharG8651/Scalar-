@@ -1,5 +1,9 @@
 import type { ParsedReading, TdsUnit } from '../domain/types';
 
+// Least-squares calibration from the 24 paired reference/Arduino PPM readings.
+const TDS_CALIBRATION_SLOPE = 1.863;
+const TDS_CALIBRATION_INTERCEPT = -27.3;
+
 /** Parse the versioned Scalar TDS protocol or early prototype formats. */
 export function parseArduinoLine(line: string): ParsedReading | null {
   const text = line.trim();
@@ -32,6 +36,10 @@ export function parseArduinoLine(line: string): ParsedReading | null {
 
   if (deviceTimeMs !== null && (!Number.isFinite(deviceTimeMs) || deviceTimeMs < 0)) return null;
   if (!Number.isFinite(tdsPpm) || tdsPpm < 0 || tdsPpm > 1e7) return null;
+
+  // Incoming serial values are the uncalibrated Arduino PPM readings.
+  // ADC counts from analogRead(A0) must first be converted to PPM in firmware.
+  tdsPpm = Math.max(0, TDS_CALIBRATION_SLOPE * tdsPpm + TDS_CALIBRATION_INTERCEPT);
   return {
     deviceTimeMs,
     tdsPpm,
