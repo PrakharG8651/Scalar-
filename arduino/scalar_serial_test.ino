@@ -4,9 +4,9 @@
   rolling five-row table, chart, save flow, and CSV/TXT exports.
 
   Serial line format at 9600 baud:
-  SCALAR,1,<elapsed_ms>,<conductivity_mS_cm>,<temperature_C>
+  SCALAR,1,<elapsed_ms>,<tds_ppm>,<temperature_C>
 
-  This is not a conductivity sensor driver. Replace simulatedConductivityMs()
+  This is not a TDS sensor driver. Replace simulatedTdsPpm()
   and simulatedTemperatureC() with values from the calibrated probe circuit
   once the team's sensor wiring and conversion formula are finalized.
 */
@@ -16,10 +16,10 @@
 const unsigned long SAMPLE_INTERVAL_MS = 1000;
 unsigned long lastSampleMs = 0;
 
-float simulatedConductivityMs(unsigned long elapsedMs) {
+float simulatedTdsPpm(unsigned long elapsedMs) {
   // Smooth, clearly synthetic variation for checking the interface.
   const float phase = (float)elapsedMs / 8000.0f;
-  return 1.35f + 0.18f * sinf(phase);
+  return 240.0f + 25.0f * sinf(phase);
 }
 
 float simulatedTemperatureC(unsigned long elapsedMs) {
@@ -39,7 +39,7 @@ void loop() {
   Serial.print("SCALAR,1,");
   Serial.print(now);
   Serial.print(',');
-  Serial.print(simulatedConductivityMs(now), 3);
+  Serial.print(simulatedTdsPpm(now), 2);
   Serial.print(',');
   Serial.println(simulatedTemperatureC(now), 1);
 }
