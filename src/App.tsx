@@ -17,14 +17,19 @@ function elapsed(milliseconds: number): string {
 
 type ExportFormat = 'csv' | 'txt';
 
+function deltaSeconds(readingTime: string, startedAt: string): string {
+  const delta = (new Date(readingTime).getTime() - new Date(startedAt).getTime()) / 1000;
+  return Number.isFinite(delta) ? Math.max(0, delta).toFixed(3) : '';
+}
+
 function dataForSession(session: ExperimentSession, format: ExportFormat): string {
   const separator = format === 'csv' ? ',' : '\t';
   const rows = [
-    ['session_name', 'started_at', 'ended_at', 'timestamp_local', 'arduino_elapsed_ms', 'tds_ppm', 'temperature_C'].join(separator),
+    ['session_name', 'started_at', 'ended_at', 'timestamp_local', 'delta_t_s', 'arduino_elapsed_ms', 'tds_ppm', 'temperature_C'].join(separator),
   ];
   session.readings.forEach((reading) => rows.push([
     `"${session.name.replaceAll('"', '""')}"`, session.startedAt, session.endedAt || '',
-    reading.time, reading.deviceTimeMs ?? '', reading.tdsPpm, reading.temperature ?? '',
+    reading.time, deltaSeconds(reading.time, session.startedAt), reading.deviceTimeMs ?? '', reading.tdsPpm, reading.temperature ?? '',
   ].join(separator)));
   return rows.join('\r\n');
 }
@@ -230,9 +235,9 @@ export default function App() {
 
   const exportAll = (format: ExportFormat) => {
     const separator = format === 'csv' ? ',' : '\t';
-    const rows = [['experiment', 'timestamp_local', 'arduino_elapsed_ms', 'tds_ppm', 'temperature_C'].join(separator)];
+    const rows = [['experiment', 'timestamp_local', 'delta_t_s', 'arduino_elapsed_ms', 'tds_ppm', 'temperature_C'].join(separator)];
     savedSessions.forEach((session) => session.readings.forEach((reading) => {
-      rows.push([`"${session.name.replaceAll('"', '""')}"`, reading.time, reading.deviceTimeMs ?? '', reading.tdsPpm, reading.temperature ?? ''].join(separator));
+      rows.push([`"${session.name.replaceAll('"', '""')}"`, reading.time, deltaSeconds(reading.time, session.startedAt), reading.deviceTimeMs ?? '', reading.tdsPpm, reading.temperature ?? ''].join(separator));
     }));
     const mime = format === 'csv' ? 'text/csv;charset=utf-8' : 'text/plain;charset=utf-8';
     const url = URL.createObjectURL(new Blob([rows.join('\r\n')], { type: mime }));
@@ -287,7 +292,7 @@ export default function App() {
 
           <section className="readings-card" aria-labelledby="readings-heading">
             <div className="readings-header"><div><div className="eyebrow">LIVE DATA</div><h2 id="readings-heading">Recent TDS readings</h2><p>Rolling queue · newest five measurements stay on screen</p></div><span className="queue-count">{Math.min(activeReadings.length, 5)} / 5 SHOWN</span></div>
-            <div className="readings-table-wrap"><table className="readings-table"><thead><tr><th>TIME (LOCAL)</th><th>ARDUINO UPTIME</th><th>TDS</th><th>TEMPERATURE</th></tr></thead><tbody>{activeReadings.slice(-5).map((reading, index) => <tr key={`${reading.time}-${index}`}><td>{clockTime(new Date(reading.time))}</td><td>{reading.deviceTimeMs === null || reading.deviceTimeMs === undefined ? '—' : `${(reading.deviceTimeMs / 1000).toFixed(2)} s`}</td><td><strong>{displayTds(reading.tdsPpm, unit).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> <span>{unit}</span></td><td>{reading.temperature === null ? '—' : `${reading.temperature.toFixed(1)} °C`}</td></tr>)}{activeReadings.length === 0 && <tr className="readings-placeholder"><td colSpan={4}>Waiting for Arduino readings. Each new measurement enters at the bottom of this five-row queue.</td></tr>}</tbody></table></div>
+            <div className="readings-table-wrap"><table className="readings-table"><thead><tr><th>TIME (LOCAL)</th><th>ΔT (S)</th><th>ARDUINO UPTIME</th><th>TDS</th><th>TEMPERATURE</th></tr></thead><tbody>{activeReadings.slice(-5).map((reading, index) => <tr key={`${reading.time}-${index}`}><td>{clockTime(new Date(reading.time))}</td><td>{active ? deltaSeconds(reading.time, active.startedAt) : '—'}</td><td>{reading.deviceTimeMs === null || reading.deviceTimeMs === undefined ? '—' : `${(reading.deviceTimeMs / 1000).toFixed(2)} s`}</td><td><strong>{displayTds(reading.tdsPpm, unit).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> <span>{unit}</span></td><td>{reading.temperature === null ? '—' : `${reading.temperature.toFixed(1)} °C`}</td></tr>)}{activeReadings.length === 0 && <tr className="readings-placeholder"><td colSpan={5}>Waiting for Arduino readings. Each new measurement enters at the bottom of this five-row queue.</td></tr>}</tbody></table></div>
             <div className="readings-footer">{activeReadings.length > 5 ? `${activeReadings.length - 5} earlier ${activeReadings.length - 5 === 1 ? 'reading has' : 'readings have'} rolled off the table.` : 'Earlier readings roll off the top as new data arrives.'}</div>
           </section>
 
@@ -301,7 +306,7 @@ export default function App() {
               const current = experiment.readings.at(-1);
               return <article className="network-experiment" key={`${experiment.sourceId}:${experiment.experimentId}`}>
                 <div className="network-experiment-head"><div><span className="device-label">{experiment.sourceLabel}{experiment.sourceId === sourceIdentity.sourceId ? ' · THIS DEVICE' : ''}</span><h3>{experiment.name}</h3><p>Started {new Date(experiment.startedAt).toLocaleString()} · {experiment.count} readings</p></div><span className={`experiment-live${experiment.endedAt ? ' ended' : ''}`}><i />{experiment.endedAt ? 'ENDED' : 'LIVE'}</span></div>
-                {current && <><div className="network-current"><strong>{displayTds(current.tdsPpm, unit).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong><span>{unit}</span><small>Updated {clockTime(new Date(current.time))}</small></div><div className="network-chart"><Sparkline readings={experiment.readings} unit={unit} /></div><details className="network-readings"><summary>View all {experiment.count} readings</summary><div className="readings-table-wrap"><table className="readings-table"><thead><tr><th>TIME (LOCAL)</th><th>ARDUINO UPTIME</th><th>TDS</th><th>TEMPERATURE</th></tr></thead><tbody>{experiment.readings.map((reading, index) => <tr key={`${reading.time}-${index}`}><td>{clockTime(new Date(reading.time))}</td><td>{reading.deviceTimeMs == null ? '—' : `${(reading.deviceTimeMs / 1000).toFixed(2)} s`}</td><td><strong>{displayTds(reading.tdsPpm, unit).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> {unit}</td><td>{reading.temperature == null ? '—' : `${reading.temperature.toFixed(1)} °C`}</td></tr>)}</tbody></table></div></details></>}
+                {current && <><div className="network-current"><strong>{displayTds(current.tdsPpm, unit).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong><span>{unit}</span><small>Updated {clockTime(new Date(current.time))}</small></div><div className="network-chart"><Sparkline readings={experiment.readings} unit={unit} /></div><details className="network-readings"><summary>View all {experiment.count} readings</summary><div className="readings-table-wrap"><table className="readings-table"><thead><tr><th>TIME (LOCAL)</th><th>ΔT (S)</th><th>ARDUINO UPTIME</th><th>TDS</th><th>TEMPERATURE</th></tr></thead><tbody>{experiment.readings.map((reading, index) => <tr key={`${reading.time}-${index}`}><td>{clockTime(new Date(reading.time))}</td><td>{deltaSeconds(reading.time, experiment.startedAt)}</td><td>{reading.deviceTimeMs == null ? '—' : `${(reading.deviceTimeMs / 1000).toFixed(2)} s`}</td><td><strong>{displayTds(reading.tdsPpm, unit).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> {unit}</td><td>{reading.temperature == null ? '—' : `${reading.temperature.toFixed(1)} °C`}</td></tr>)}</tbody></table></div></details></>}
               </article>;
             })}</div>}
           </section>
