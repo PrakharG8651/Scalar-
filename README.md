@@ -109,6 +109,3 @@ arduino/
 
 The standalone LaTeX source is [`docs/scalar_documentation.tex`](docs/scalar_documentation.tex). Compile it from the `docs` folder with `pdflatex scalar_documentation.tex`; run the command twice to populate the table of contents and cross-references.
 
-## Keywords
-
-TDS monitoring, Arduino, Web Serial, React, TypeScript, Vite, Server-Sent Events, local-first storage, LAN dashboard, ppm, mg/L, CSV export, experiment logging.
