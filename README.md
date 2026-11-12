@@ -90,10 +90,10 @@ The fields are:
 | `SCALAR` | Protocol marker | `SCALAR` |
 | `1` | Protocol version | `1` |
 | `1240` | Arduino uptime from `millis()`, in milliseconds | `1240` |
-| `245.50` | Calibrated TDS reading, in ppm | `245.50` |
+| `245.50` | Arduino TDS reading before site calibration, in ppm | `245.50` |
 | `24.8` | Optional temperature, in degrees Celsius | `24.8` |
 
-The browser records its own local receive time as well as Arduino uptime. This lets viewers compare when readings arrived while retaining the board's elapsed time for each sample. Send an empty final field if temperature is unavailable, for example `SCALAR,1,1240,245.50,`.
+The site calibrates incoming Arduino PPM values using `PPM_calibrated = 2.0138 × PPM_Arduino − 44.7902`, then records its own local receive time as well as Arduino uptime. This lets viewers compare when readings arrived while retaining the board's elapsed time for each sample. Temperature is not required; send an empty final field, for example `SCALAR,1,1240,245.50,`.
 
 ### Serial test sketch
 
