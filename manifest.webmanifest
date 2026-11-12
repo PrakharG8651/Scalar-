@@ -1,7 +1,7 @@
 {
-  "name": "Scalar — Conductivity Lab",
-  "short_name": "Scalar Lab",
-  "description": "A local-first dashboard for Arduino conductivity experiments.",
+  "name": "Scalar — TDS Lab",
+  "short_name": "Scalar TDS",
+  "description": "A shared live dashboard for Arduino TDS experiments.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#f5f7f4",
