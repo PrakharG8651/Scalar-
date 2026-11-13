@@ -30,50 +30,32 @@ flowchart LR
     F -. read-only view .-> G
 ```
 
-## Run the app
+## Start Scalar in the lab (Windows)
 
-### Windows: install once, then use the desktop icon
+The lab version is operated with the included Windows installer and desktop shortcuts. **Faculty do not need to use a terminal or enter setup commands.**
 
-For lab users, no terminal commands are needed for normal use:
+### First-time setup
 
-1. Double-click [`Install Scalar.bat`](<Install Scalar.bat>) once. It checks for Node.js 20 or later, installs Node.js LTS with Windows Package Manager if needed, installs the app packages, builds Scalar, and creates **Scalar Lab** and **Stop Scalar Lab** desktop icons. The first setup needs internet access. If Windows Package Manager is unavailable, the installer opens the official Node.js download page and explains what to do next.
-2. Double-click **Scalar Lab** whenever you want to use the dashboard. It starts the local server in the background, opens the site in your default browser, and displays the host computer's LAN addresses for the other lab devices.
-3. Keep the host computer running while other devices view the live feed. When finished, double-click **Stop Scalar Lab**.
+1. Copy or extract the Scalar project folder onto the Windows computer that will host the lab session. Keep the folder in a permanent location; the desktop shortcuts created during setup point to it.
+2. Double-click [`Install Scalar.bat`](<Install Scalar.bat>) and wait for setup to finish. The installer checks for Node.js 20 or later, installs Node.js LTS if needed, downloads the app packages, prepares the production dashboard, and creates **Scalar Lab** and **Stop Scalar Lab** desktop shortcuts. Internet access is required during setup.
+3. If Windows Package Manager is unavailable, the installer opens the official Node.js download page. Install the Node.js LTS version, then run **Install Scalar.bat** again.
 
-If Windows Firewall asks whether Node.js can accept connections, allow it on the **Private network** used by the lab. Do not allow public-network access for this lab setup.
+### Each lab session
 
-### Development on a local network
+1. On the host computer, connect the Arduino to USB and double-click the **Scalar Lab** desktop shortcut. The launcher starts the local server and opens the dashboard in the default browser. If the app has not been prepared yet, the launcher starts the installer automatically.
+2. In the dashboard, select **Connect Arduino** and choose the Arduino's serial port. Use Chrome or Edge on the host computer for the serial connection.
+3. The launcher displays the host computer's local address and the address(es) other devices can use. On other devices connected to the same lab Wi-Fi, open one of the displayed network addresses to view the live experiment. Network viewers can watch readings but cannot connect to the Arduino or save the host's session.
+4. Keep the host computer on while the lab is running. At the end, save or export any readings you need, then double-click **Stop Scalar Lab** to stop the server.
 
-Install dependencies once:
+If Windows Firewall asks whether Node.js can accept connections, allow it on the lab's **Private network** only. The host and viewers must be on a network that permits devices to communicate with one another. Scalar does not require an account; anyone who can reach the app on that network can view the live feed.
 
-```sh
-npm install
-```
+### Troubleshooting
 
-Start Vite and the built-in LAN relay:
-
-```sh
-npm run dev
-```
-
-Use the exact address Vite prints in the terminal on the host computer. It normally starts at `http://localhost:5173`; if that port is already occupied, Vite selects another port (for example, 5174). On other devices using the same Wi-Fi, use Vite's printed network address or replace `localhost` with the host computer's LAN IP. The host computer must remain on and the development server must remain running while viewers use the live feed. A firewall may need to allow connections to Vite's port.
-
-### Production server
-
-```sh
-npm run build
-npm start
-```
-
-The Node server serves the generated `dist` directory and the LAN API on port 4174 by default. Set the `PORT` environment variable to change the port. For access outside a trusted lab network, deploy behind HTTPS. Web Serial requires a secure context and is currently supported mainly in desktop Chromium browsers such as Chrome and Edge. The Arduino must be plugged into the device that selects **Connect Arduino**; other network devices can view the stream without a serial port.
-
-The production server serves `index.html` for the root URL (`/`) and for client-side dashboard routes, while keeping requests inside the built `dist` directory. The Windows desktop launcher checks ports 4174 through 4194 and uses the first available one, so another app already using 4174 will not stop Scalar from launching. It confirms startup from the server's listening message, then opens the dashboard. Startup output and errors are kept in the `logs` folder.
-
-### Troubleshooting the Windows launcher
-
-- **The browser shows `Forbidden`:** stop Scalar Lab and launch it again so the server reloads the current files. The server should serve the dashboard at the root URL, such as `http://localhost:4174/` (the port may differ).
-- **The launcher says the server could not start:** check `logs/scalar-server-error.log` and `logs/scalar-server.log` in the project folder. The first contains startup errors; the second confirms which port Node is listening on.
-- **Other devices cannot connect:** use the LAN address shown by the launcher, keep the host computer on, and allow Node.js on the lab's Windows **Private** network if Windows Firewall prompts. Both devices must be on a network that permits device-to-device traffic.
+- **The browser shows `Forbidden`:** double-click **Stop Scalar Lab**, then start **Scalar Lab** again.
+- **The launcher says the server could not start:** check the `logs` folder inside the Scalar project folder. `scalar-server-error.log` contains startup errors; `scalar-server.log` contains server startup information.
+- **The launcher reports that ports are already in use:** close another Scalar instance or ask the lab's IT support for help. The launcher checks ports 4174 through 4194.
+- **Other devices cannot connect:** use an address displayed by the launcher, confirm both devices are on the same lab Wi-Fi, keep the host computer running, and allow Node.js on the Windows **Private network** if prompted.
+- **The Arduino cannot be selected:** connect it to the host computer and use Chrome or Edge. Network viewers can see the live feed, but only the host browser can access the USB serial device.
 
 ## Arduino serial format
 
