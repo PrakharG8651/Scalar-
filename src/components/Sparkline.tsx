@@ -4,7 +4,7 @@ import { displayTds } from '../services/measurements';
 interface Props { readings: Reading[]; unit: TdsUnit; }
 
 export default function Sparkline({ readings, unit }: Props) {
-  const points = readings.slice(-80);
+  const points = readings;
   if (!points.length) return null;
   const values = points.map((point) => displayTds(point.tdsPpm, unit));
   const min = Math.min(...values), max = Math.max(...values);
@@ -27,7 +27,7 @@ export default function Sparkline({ readings, unit }: Props) {
           <path className="chart-line" d={path} />
           <circle className="chart-last-dot" r="4" cx={last.x} cy={last.y} />
         </svg>
-        <div className="chart-x-labels">{ticks.map((index, key) => <span key={key}>{new Date(points[index].time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>)}</div>
+        <div className="chart-x-labels">{ticks.map((index, key) => <span key={key}>{new Date(points[index].time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>)}</div>
       </div>
     </div>
   );
