@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import Sparkline from './components/Sparkline';
 import type { ExperimentSession, Reading, SharedExperiment, TdsUnit } from './domain/types';
 import { displayTds } from './services/measurements';
@@ -10,9 +10,23 @@ function clockTime(date: Date): string {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
+function greetingForTime(date: Date): string {
+  const hour = date.getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
 function elapsed(milliseconds: number): string {
   const seconds = Math.floor(milliseconds / 1000);
   return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+function formatWindowDuration(totalSeconds: number): string {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return [hours ? `${hours} hr` : '', minutes ? `${minutes} min` : '', seconds ? `${seconds} sec` : ''].filter(Boolean).join(' ') || '0 sec';
 }
 
 type ExportFormat = 'csv' | 'txt';
@@ -56,6 +70,10 @@ export default function App() {
   const [latest, setLatest] = useState<Reading | null>(null);
   const [toast, setToast] = useState('');
   const [duration, setDuration] = useState(0);
+  const [chartWindow, setChartWindow] = useState<number | null>(null);
+  const [windowInput, setWindowInput] = useState({ hours: '0', minutes: '1', seconds: '30' });
+  const [windowError, setWindowError] = useState('');
+  const [windowDialogOpen, setWindowDialogOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const serialRef = useRef<SerialDevice | null>(null);
   const activeSessionRef = useRef<ExperimentSession | null>(null);
@@ -66,6 +84,13 @@ export default function App() {
   pausedRef.current = paused;
   const display = useMemo(() => latest ? displayTds(latest.tdsPpm, unit) : null, [latest, unit]);
   const activeReadings = active?.readings ?? [];
+  const draftWindowSeconds = Number(windowInput.hours) * 3600 + Number(windowInput.minutes) * 60 + Number(windowInput.seconds);
+  const chartReadings = useMemo(() => {
+    if (chartWindow === null || activeReadings.length === 0) return activeReadings;
+    const latestTime = new Date(activeReadings[activeReadings.length - 1].time).getTime();
+    const cutoff = latestTime - chartWindow * 1000;
+    return activeReadings.filter((reading) => new Date(reading.time).getTime() >= cutoff);
+  }, [activeReadings, chartWindow]);
 
   const notify = useCallback((message: string) => {
     setToast(message);
@@ -77,6 +102,15 @@ export default function App() {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!windowDialogOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setWindowDialogOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [windowDialogOpen]);
 
   useEffect(() => subscribeToSharedFeed({
     onSnapshot: setNetworkExperiments,
@@ -250,12 +284,45 @@ export default function App() {
 
   const setPause = () => setPaused((value) => !value);
 
+  const applyChartWindow = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const hours = Number(windowInput.hours);
+    const minutes = Number(windowInput.minutes);
+    const seconds = Number(windowInput.seconds);
+    if (![hours, minutes, seconds].every((value) => Number.isSafeInteger(value) && value >= 0) || minutes >= 60 || seconds >= 60) {
+      setWindowError('Enter hours and values from 0 to 59 for minutes and seconds.');
+      return;
+    }
+    const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+    if (!Number.isSafeInteger(totalSeconds) || totalSeconds <= 0) {
+      setWindowError('Enter a duration greater than zero.');
+      return;
+    }
+    setChartWindow(totalSeconds);
+    setWindowError('');
+    setWindowDialogOpen(false);
+  };
+
+  const openWindowDialog = () => {
+    if (chartWindow !== null) {
+      setWindowInput({ hours: String(Math.floor(chartWindow / 3600)), minutes: String(Math.floor((chartWindow % 3600) / 60)), seconds: String(chartWindow % 60) });
+    }
+    setWindowError('');
+    setWindowDialogOpen(true);
+  };
+
+  const showAllData = () => {
+    setChartWindow(null);
+    setWindowError('');
+    setWindowDialogOpen(false);
+  };
+
   return (
     <div className="app-shell">
       <aside className="sidebar" aria-label="Main navigation">
         <a className="brand" href="#dashboard" aria-label="Scalar home">
           <span className="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M4 17h5l4-9 6 17 4-8h5" /></svg></span>
-          <span>scalar<span className="brand-dot">.</span><small>CONDUCTIVITY LAB</small></span>
+          <span>scalar<span className="brand-dot">.</span><small>TDS LAB</small></span>
         </a>
         <div className="nav-label">WORKSPACE</div>
         <a className="nav-item active" href="#dashboard"><span className="nav-icon">⌂</span> Overview</a>
@@ -268,7 +335,7 @@ export default function App() {
       <main className="main-content" id="dashboard">
         <header className="topbar"><div className="breadcrumb">Workspace <span>/</span> <strong>Overview</strong></div><div className="topbar-right"><span className="local-badge"><span className={`local-dot${feedConnected ? '' : ' offline'}`} /> {feedConnected ? 'LAN LIVE' : 'LAN OFFLINE'}</span><span className="avatar" aria-label="No account required">L</span></div></header>
         <div className="page-wrap">
-          <section className="page-heading"><div><div className="eyebrow">UNIT OPERATIONS LAB <span>•</span> CONDUCTIVITY</div><h1>Good afternoon, researcher<span className="heading-period">.</span></h1><p className="subheading">Your measurement bench is ready when you are.</p></div><div className="date-stamp"><span className="date-icon">▦</span><span>{now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}</span></div></section>
+          <section className="page-heading"><div><div className="eyebrow">UNIT OPERATIONS LAB <span>•</span> TDS MONITOR</div><h1>{greetingForTime(now)}, researcher<span className="heading-period">.</span></h1><p className="subheading">Your measurement bench is ready when you are.</p></div><div className="date-stamp"><span className="date-icon">▦</span><span>{now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}</span></div></section>
 
           <section className="device-card" aria-label="Arduino connection">
             <div className="device-visual" aria-hidden="true"><div className="device-chip"><span className="chip-pin top" /><span className="chip-pin bottom" /><span className="chip-core">TDS</span></div><span className="device-wave wave-one" /><span className="device-wave wave-two" /></div>
@@ -285,9 +352,11 @@ export default function App() {
           </section>
 
           <section className="chart-card" aria-labelledby="chart-heading">
-            <div className="chart-header"><div><div className="chart-title-row"><h2 id="chart-heading">TDS over time</h2><span className="chart-live"><span className={`pulse-dot${connected && !paused ? ' active' : ''}`} /> LIVE</span></div><p>Track the current experiment by local sample time.</p></div><label className="unit-select-wrap"><span className="sr-only">TDS unit</span><select value={unit} onChange={(event) => changeUnit(event.target.value as TdsUnit)}><option value="ppm">ppm</option><option value="mg/L">mg/L</option></select><span className="select-chevron">⌄</span></label></div>
+            <div className="chart-header"><div><div className="chart-title-row"><h2 id="chart-heading">TDS over time</h2><span className="chart-live"><span className={`pulse-dot${connected && !paused ? ' active' : ''}`} /> LIVE</span></div><p>Track the current experiment by local sample time.</p></div><div className="chart-controls"><button className="window-trigger" type="button" onClick={openWindowDialog}>{chartWindow === null ? 'All data' : `Last ${formatWindowDuration(chartWindow)}`}<span aria-hidden="true">⌄</span></button><label className="unit-select-wrap"><span className="sr-only">TDS unit</span><select value={unit} onChange={(event) => changeUnit(event.target.value as TdsUnit)}><option value="ppm">ppm</option><option value="mg/L">mg/L</option></select><span className="select-chevron">⌄</span></label></div></div>
+            {chartWindow !== null && <div className="chart-window-message" role="status">Showing the last {formatWindowDuration(chartWindow)} of readings{chartReadings.length < activeReadings.length ? ` · ${chartReadings.length} readings in this window` : activeReadings.length ? ` · all ${activeReadings.length} readings fit within this window` : ''}.</div>}
+            {windowDialogOpen && <div className="window-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setWindowDialogOpen(false); }}><section className="window-dialog" role="dialog" aria-modal="true" aria-labelledby="window-dialog-title"><div className="window-dialog-header"><div><div className="eyebrow">GRAPH DISPLAY</div><h3 id="window-dialog-title">Choose a time window</h3></div><button className="window-dialog-close" type="button" onClick={() => setWindowDialogOpen(false)} aria-label="Close time window dialog">×</button></div><p className="window-dialog-copy">Set how much recent data the graph should show.</p><form className="window-form" onSubmit={applyChartWindow}><label><span>Hours</span><input aria-label="Hours" type="number" min="0" step="1" value={windowInput.hours} onChange={(event) => { setWindowInput({ ...windowInput, hours: event.target.value }); setWindowError(''); }} /></label><label><span>Minutes</span><input aria-label="Minutes" type="number" min="0" max="59" step="1" value={windowInput.minutes} onChange={(event) => { setWindowInput({ ...windowInput, minutes: event.target.value }); setWindowError(''); }} /></label><label><span>Seconds</span><input aria-label="Seconds" type="number" min="0" max="59" step="1" value={windowInput.seconds} onChange={(event) => { setWindowInput({ ...windowInput, seconds: event.target.value }); setWindowError(''); }} /></label><div className="window-preview" role="status">{draftWindowSeconds > 0 && Number.isFinite(draftWindowSeconds) ? `The graph will show the last ${formatWindowDuration(draftWindowSeconds)} of readings.` : 'Enter a duration greater than zero.'}</div>{windowError && <div className="window-error" role="alert">{windowError}</div>}<div className="window-dialog-actions"><button className="window-reset" type="button" onClick={showAllData}>Show all data</button><button className="window-apply" type="submit">Apply window</button></div></form></section></div>}
             <div className="chart-legend"><span className="legend-line" /> TDS <span className="legend-current">{display === null ? '—' : `${display.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${unit}`}</span></div>
-            {activeReadings.length ? <Sparkline readings={activeReadings} unit={unit} /> : <div className="chart-area"><div className="chart-y-labels"><span>—</span><span>—</span><span>—</span><span>—</span></div><div className="chart-plot"><div className="chart-grid"><i /><i /><i /><i /></div><div className="chart-empty"><span className="empty-wave">⌁</span><strong>Your readings will appear here</strong><span>Connect your Arduino to begin a live experiment.</span></div><div className="chart-x-labels"><span>—</span><span>—</span><span>—</span><span>—</span><span>—</span></div></div></div>}
+            {chartReadings.length ? <Sparkline readings={chartReadings} unit={unit} /> : activeReadings.length ? <div className="chart-empty-window">No readings in this time window yet.</div> : <div className="chart-area"><div className="chart-y-labels"><span>—</span><span>—</span><span>—</span><span>—</span></div><div className="chart-plot"><div className="chart-grid"><i /><i /><i /><i /></div><div className="chart-empty"><span className="empty-wave">⌁</span><strong>Your readings will appear here</strong><span>Connect your Arduino to begin a live experiment.</span></div><div className="chart-x-labels"><span>—</span><span>—</span><span>—</span><span>—</span><span>—</span></div></div></div>}
           </section>
 
           <section className="readings-card" aria-labelledby="readings-heading">
