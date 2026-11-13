@@ -93,11 +93,11 @@ The fields are:
 | `245.50` | Arduino TDS reading before site calibration, in ppm | `245.50` |
 | `24.8` | Optional temperature, in degrees Celsius | `24.8` |
 
-The site calibrates incoming Arduino PPM values using `PPM_calibrated = 2.0138 × PPM_Arduino − 44.7902`, then records its own local receive time as well as Arduino uptime. This lets viewers compare when readings arrived while retaining the board's elapsed time for each sample. Temperature is not required; send an empty final field, for example `SCALAR,1,1240,245.50,`.
+The browser currently applies `TDS_ppm = max(0, 1.863 × PPM_Arduino − 27.3)` to the incoming PPM estimate, then records its own local receive time as well as Arduino uptime. The firmware must convert the probe's electrical signal into an unadjusted PPM estimate first; the browser applies the project's current linear correction. Validate this correction against the lab's reference solutions before treating readings as experimental results. Temperature is not required; send an empty final field, for example `SCALAR,1,1240,245.50,`.
 
 ### Serial test sketch
 
-[`arduino/scalar_serial_test.ino`](arduino/scalar_serial_test.ino) emits smooth synthetic values once per second using the same protocol. Use it to check serial transport, the rolling queue, chart, network viewers, local save, and exports before sensor calibration. It **does not measure TDS**. The actual probe circuit, conversion method, and calibration must supply the firmware's `tds_ppm` value.
+[`arduino/scalar_serial_test.ino`](arduino/scalar_serial_test.ino) emits smooth synthetic values once per second using the same protocol. Use it to check serial transport, the rolling queue, chart, network viewers, local save, and exports before sensor calibration. It **does not measure TDS**. Real firmware must convert the probe's electrical signal into an unadjusted TDS estimate in ppm; the browser then applies the linear correction described above.
 
 ## Data and privacy model
 
@@ -132,5 +132,5 @@ Launch Scalar.bat               Start server and open dashboard
 Stop Scalar.bat                 Stop the background server
 ```
 
-The project documentation is available as a PDF at [`docs/documentation.pdf`](docs/documentation.pdf). Open that file to read about the implemented features, setup, data flow, Arduino serial format, and current limitations.
+The project documentation is available as a PDF at [`docs/documentation_scalar.pdf`](docs/documentation_scalar.pdf). Open that file to read about the implemented features, setup, data flow, Arduino serial format, and current limitations.
 
