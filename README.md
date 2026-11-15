@@ -114,5 +114,7 @@ Launch Scalar.bat               Start server and open dashboard
 Stop Scalar.bat                 Stop the background server
 ```
 
-The project documentation is available as a PDF at [`docs/documentation_scalar.pdf`](docs/documentation_scalar.pdf). Open that file to read about the implemented features, setup, data flow, Arduino serial format, and current limitations.
+## Installation guide
+
+For beginner-friendly, illustrated Windows instructions, open the [Scalar UI Installation Guide (PDF)](docs/Scalar_UI_Installation_Guide.pdf) or its [Markdown version](docs/Scalar_UI_Installation_Guide.md). The [full project documentation PDF](docs/documentation.pdf) also includes the updated Windows setup and run steps.
 
